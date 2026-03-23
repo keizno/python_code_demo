@@ -498,6 +498,14 @@ def toggle_capture_mode(app):
     if not capturing_mode:
         capturing_mode = True
         capture_step = 1  # 트리거 이미지 캡처 단계
+
+        # ✅ [추가] 캡처 모드 진입 시마다 F8 핫키 재등록 (훅 소멸 방지)
+        try:
+            keyboard.remove_hotkey('f8')
+        except Exception:
+            pass
+        keyboard.add_hotkey('f8', lambda: app.root.after(10, app.handle_f8_key))
+        
         app.status_callback("캡처 모드 시작: 트리거 이미지 위치에서 F8를 누르세요.")
         app.capture_button.config(text="캡처 모드 취소")
         
@@ -654,7 +662,7 @@ class AutoClickerApp:
     def __init__(self, root):
         self.root = root
         self.root.withdraw()
-        self.root.title("Click_Click_v4.3 by sungkb04@khnp.co.kr")
+        self.root.title("Click_Click_v4.4 by sungkb04@khnp.co.kr")
         # 아이콘 설정
         try:
             icon_path = self.resource_path("click_click_auto.ico")
@@ -678,6 +686,10 @@ class AutoClickerApp:
         }
         
         # F8 키 핫키 설정 (함수명 수정 및 메서드 연결)
+        try:
+            keyboard.remove_hotkey('f8')
+        except Exception:
+            pass
         keyboard.add_hotkey('f8', lambda: self.root.after(10, self.handle_f8_key))
         
         self.setup_ui()
@@ -731,24 +743,24 @@ class AutoClickerApp:
     def handle_f8_key(self):
         global capturing_mode, capture_step, profile_switching, monitoring_event
         
-        # 프로필 전환 중이거나 모니터링 중이면 F8 입력 무시
+        # ✅ [변경] capturing_mode 여부 무관하게 무시 원인 로그 출력
         if profile_switching or monitoring_event.is_set():
-            if capturing_mode:
-                self.status_callback(f"F8 키 무시됨 (원인: 프로필전환={profile_switching}, 모니터링={monitoring_event.is_set()})")
+            self.status_callback(
+                f"[F8 무시] 프로필전환={profile_switching}, 모니터링={monitoring_event.is_set()}, 캡처모드={capturing_mode}"
+            )
             return
         
         if not capturing_mode:
+            # 캡처 모드 아닐 때는 조용히 무시 (기존 동작 유지)
             return
         
-        # 현재 마우스 위치 가져오기
         x, y = pyautogui.position()
         
-        if capture_step == 1:  # 트리거 이미지 캡처
+        if capture_step == 1:
             self.delayed_capture(x, y, "트리거")
-        
-        elif capture_step == 2:  # 타겟 이미지 캡처
+        elif capture_step == 2:
             self.delayed_capture(x, y, "타겟")
-
+    
     # [이동] 캡처 지연 함수
     def delayed_capture(self, x, y, capture_type):
         self.status_callback(f"마우스를 옮겨주세요. 2초 후 {capture_type} 캡처가 진행됩니다...")
@@ -1508,6 +1520,7 @@ class AutoClickerApp:
                 profile_switching = False
                 dialog.destroy()
             tk.Button(dialog, text="취소", command=on_cancel, width=10).pack(pady=5)
+            dialog.protocol("WM_DELETE_WINDOW", on_cancel)
         except Exception as e:
             profile_switching = False
             self.status_callback(f"프로필 로드 중 오류: {e}")
