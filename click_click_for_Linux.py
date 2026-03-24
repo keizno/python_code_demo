@@ -12,6 +12,12 @@
 # 2. 나머지 라이브러리만 pip로 설치
 # pip3 install Pillow pyautogui pynput --break-system-packages
 
+# kasm에서는 파이썬과 모듈 추가 설치 필요..
+# sudo apt update
+# sudo apt install python3 python3-pip
+# 캡처 실패함..아래와 같이 추가설치..@kasm
+# sudo apt install gnome-screenshot
+# 카즘에서 정상작동함..
 
 import tkinter as tk
 import threading
