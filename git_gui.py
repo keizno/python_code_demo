@@ -25,7 +25,16 @@ except Exception:
         ctypes.windll.user32.SetProcessDPIAware()
     except Exception:
         pass
+        
 
+def resource_path(relative_path):
+    """ 실행 파일(EXE)로 빌드된 경우와 스크립트 실행 시의 상대 경로를 처리 """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+    
 # ────────────────────────────────────────────────
 #  설정 파일 경로
 # ────────────────────────────────────────────────
@@ -85,23 +94,35 @@ def run_git(cmd, cwd=None):
             cmd,
             cwd=cwd,
             shell=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
+            capture_output=True,  # text=True, encoding 제거 → bytes로 받기
         )
-        out = result.stdout.strip()
-        err = result.stderr.strip()
+
+        def _decode(b: bytes) -> str:
+            try:
+                return b.decode("utf-8")
+            except UnicodeDecodeError:
+                return b.decode("cp949", errors="replace")
+
+        out = _decode(result.stdout).strip()
+        err = _decode(result.stderr).strip()
         combined = "\n".join(filter(None, [out, err]))
         return result.returncode, combined
     except Exception as e:
         return -1, str(e)
 
 
+
 class GitGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("🐙  Git GUI Manager")
+        # 상대 경로 함수를 이용해 아이콘 로드
+        try:
+            icon_path = resource_path("git_manager.ico")
+            self.iconbitmap(icon_path)
+        except:
+            pass
+        # -----------------------        
+        self.title("🐙  Git GUI Manager by sungkb@khnp.co.kr")
         self.geometry("1180x820")
         self.minsize(1000, 700)
         self.configure(bg=COLORS["bg"])
@@ -329,13 +350,13 @@ class GitGUI(tk.Tk):
         # 4. 상태 및 복구
         st_card = self._card(parent, "🔍  상태 및 복구", lambda f: f.grid(row=1, column=1, sticky="nsew", padx=10, pady=10))
         
-        for label, cmd in [("git status", "git status"), ("git diff", "git diff"), ("git checkout . (전체복구)", "git checkout ."), ("git reset HEAD~1", "git reset HEAD~1")]:
+        for label, cmd in [("git log --oneline", "git log --oneline"),("git status", "git status"), ("git diff", "git diff"), ("git checkout . (전체복구)", "git checkout ."), ("git reset HEAD~1", "git reset HEAD~1")]:
             ttk.Button(st_card, text=label, style="Action.TButton", command=lambda c=cmd: self._exec(c)).pack(fill="x", padx=8, pady=2)
 
-        # 5. 기타 명령어
-        etc_card = self._card(parent, "🎸  기타 명령어", lambda f: f.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=10, pady=10))
-        ttk.Button(etc_card, text="git log --oneline", style="Action.TButton", command=lambda: self._exec("git log --oneline")).pack(fill="x", padx=8, pady=2)
-        ttk.Button(etc_card, text="git status", style="Action.TButton", command=lambda: self._exec("git status")).pack(fill="x", padx=8, pady=2)
+#        # 5. 기타 명령어
+#        etc_card = self._card(parent, "🎸  기타 명령어", lambda f: f.grid(row=2, column=0, columnspan=2, sticky="nsew", padx=10, pady=10))
+#        ttk.Button(etc_card, text="git log --oneline", style="Action.TButton", command=lambda: self._exec("git log --oneline")).pack(fill="x", padx=8, pady=2)
+#        ttk.Button(etc_card, text="git status", style="Action.TButton", command=lambda: self._exec("git status")).pack(fill="x", padx=8, pady=2)
 
     def _build_tab_init(self, parent):
         card = self._card(parent, "🛠️  Git 초기화 / 사용자 설정", lambda f: f.pack(fill="x", padx=12, pady=12))
